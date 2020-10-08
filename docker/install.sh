@@ -4,10 +4,11 @@
 
 apt update
 apt upgrade
-
+apt-get install -y make
 apt-get install -y \
 	apt-utils \
-	build-essential cmake pkg-config \
+	curl \
+	build-essential make cmake pkg-config \
 	git \
 	ncurses-dev libreadline-dev libedit-dev \
 	libgoogle-perftools-dev \
@@ -26,22 +27,22 @@ apt-get install -y \
 
 ########################################################
 
+# Clone Emscripten's Emmake 
+cd $HOME
+git clone https://github.com/emscripten-core/emsdk.git
+cd emsdk
+./emsdk install latest
+./emsdk activate latest
+
+########################################################
+
+
 # Build ZLib   
 wget https://zlib.net/zlib-1.2.11.tar.gz -O "$HOME/zlib-1.2.11.tar.gz"
 tar -xf "$HOME/zlib-1.2.11.tar.gz" -C "$HOME"
 cd "$HOME/zlib-1.2.11"
 emconfigure ./configure
 emmake make
-
-########################################################
-
-# Build Emscripten   
-cd $HOME
-git clone https://github.com/emscripten-core/emsdk.git
-cd emsdk
-./emsdk install latest
-./emsdk activate latest
-source ./emsdk_env.sh
 
 ########################################################
 
@@ -73,5 +74,5 @@ cmake -DCMAKE_TOOLCHAIN_FILE=$HOME/emsdk/upstream/emscripten/cmake/Modules/Platf
       -DSWIPL_PACKAGES=OFF \
       -DINSTALL_DOCUMENTATION=OFF \
       -DSWIPL_NATIVE_FRIEND=build \
-      -G "Unix Makefiles" ..
+			..
 emmake make

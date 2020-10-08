@@ -8,7 +8,9 @@ WebAssembly.
 
 These compilation instructions assume Linux-based
 host machine. The resulting WebAssembly binary is
-platform-independent.
+platform-independent. 
+
+_Note: This build will NOT work on a Raspberry PI due to the non-64-bit architecture._
 
 ### Preparation
 
@@ -17,80 +19,102 @@ the instruction on its [homepage][em-install].
 
 [em-install]:http://kripken.github.io/emscripten-site/docs/getting_started/downloads.html
 
-After the successful installation load the Emscripten
-environment into the current terminal session (adjust path):
+__this build will place certain source files in your $HOME.__
+
 
 ```sh
-source ./emsdk_env.sh
-```
+########################################################
 
-### Dependencies
+# Install Dependencies 
 
-SWI-Prolog depends on zlib. To compile it to WebAssembly:
+apt update
+apt upgrade
 
-```sh
+apt-get install -y \
+	apt-utils \
+	build-essential cmake pkg-config \
+	git \
+	ncurses-dev libreadline-dev libedit-dev \
+	libgoogle-perftools-dev \
+	libunwind-dev \
+	libgmp-dev \
+	libssl-dev \
+	unixodbc-dev \
+	zlib1g-dev libarchive-dev \
+	libossp-uuid-dev \
+	libxext-dev libice-dev libjpeg-dev libxinerama-dev libxft-dev \
+	libxpm-dev libxt-dev \
+	libdb-dev \
+	libpcre3-dev \
+	libyaml-dev \
+	python3
+
+########################################################
+
+# Build ZLib   
 wget https://zlib.net/zlib-1.2.11.tar.gz -O "$HOME/zlib-1.2.11.tar.gz"
 tar -xf "$HOME/zlib-1.2.11.tar.gz" -C "$HOME"
 cd "$HOME/zlib-1.2.11"
 emconfigure ./configure
 emmake make
-```
 
-This will download and build zlib into the `zlib-1.2.11`
-subdirectory in your home directory.
+########################################################
 
-### Build SWI-Prolog
+# Build Emscripten   
+cd $HOME
+git clone https://github.com/emscripten-core/emsdk.git
+cd emsdk
+./emsdk install latest
+./emsdk activate latest
 
-```sh
-git clone https://github.com/rla/swipl-devel.git "$HOME/swipl-devel"
-cd "$HOME/swipl-devel"
-git fetch
-git checkout wasm
-./prepare
-```
+# After the successful installation load the Emscripten
+#environment into the current terminal session (adjust path):
+source ./emsdk_env.sh
 
-This will ask:
+########################################################
 
-```
-Do you want me to run git submodule update --init? [Y/n]
-```
+# Build SWIPL       
+cd $HOME
+git clone https://github.com/SWI-Prolog/swipl-devel.git
+cd swipl-devel
+git submodule update --init
 
-As we are not yet building packages, say "n".
+## 'Development' Build...
+mkdir build
+cd build
+cmake -DSWIPL_PACKAGES_JAVA=OFF ..
+make
+make install
 
-If it asks:
-
-```
-Could not find documentation.  What do you want to do?
-```
-
-Then say "3". We do not need documentation to build it.
-
-After this we can run configure and compile:
-
-```sh
-cd "$HOME/swipl-devel/src"
-LDFLAGS=-L"$HOME/zlib-1.2.11" \
-  LIBS=-lzlib \
-  CPPFLAGS=-I"$HOME/zlib-1.2.11" \
-  COFLAGS=-O3 emconfigure ./configure \
-    --disable-mt \
-    --disable-gmp \
-    --disable-custom-flags
+##  'WASM' 'Development' Build...
+cd $HOME/swipl-devel
+mkdir build.wasm
+cd build.wasm
+cmake -DCMAKE_TOOLCHAIN_FILE=$HOME/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake \
+      -DCMAKE_BUILD_TYPE=Release \
+		  -DZLIB_LIBRARY=$HOME/zlib-1.2.11/libz.a \
+		  -DZLIB_INCLUDE_DIR=$HOME/zlib-1.2.11 \
+      -DMULTI_THREADED=OFF \
+      -DUSE_SIGNALS=OFF \
+      -DUSE_GMP=OFF \
+      -DBUILD_SWIPL_LD=OFF \
+      -DSWIPL_PACKAGES=OFF \
+      -DINSTALL_DOCUMENTATION=OFF \
+      -DSWIPL_NATIVE_FRIEND=build \
+      -G "Unix Makefiles" ..
+      
 emmake make
+
+
+########################################################
+
+# Move WASM Source Files to Build (to allow friend-build dependencies)
+#
+
+
+# ... and all of the other WASMs?
 ```
 
-This will build the necessary 3 files in `$HOME/swipl-devel/src`.
-See "Distribution".
-
-## Distribution
-
-Binary distribution (in the `dist` directory) contains
-the files:
-
- * `swipl-web.wasm` - binary distribution of SWI-Prolog executable.
- * `swipl-web.dat` - necessary files to initialize the runtime and the library.
- * `swipl-web.js` - JavaScript wrapper that loads the wasm code and prepares the
-   virtual filesystem with the runtime initialization file and the library.
 
 ## Usage
 
