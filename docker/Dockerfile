@@ -1,15 +1,14 @@
 ########################################################
 
-# Emscripten Environment 
-
-FROM emscripten/emsdk
+               FROM emscripten/emsdk
 
 ########################################################
 
 # Install Dependencies 
-RUN     apt-get update
-RUN     apt-get install -y make
-RUN     apt-get install -y \
+
+RUN       apt-get update
+RUN       apt-get install -y make
+RUN       apt-get install -y \
           apt-utils \
           curl \
           build-essential \
@@ -36,49 +35,54 @@ RUN     apt-get install -y \
 
 # Configure Emsdk
 
-RUN     emsdk install latest-upstream
-RUN     emsdk activate latest-upstream
+RUN       emsdk install latest
+RUN       emsdk activate latest
 
 ########################################################
 
-# Build ZLib   
+# zlib    
 
-WORKDIR    /
-RUN        wget https://zlib.net/zlib-1.2.11.tar.gz
-RUN        tar -xf zlib-1.2.11.tar.gz
-RUN        ls -l
-WORKDIR    /zlib-1.2.11
-RUN        emconfigure ./configure
-RUN        emmake make
+WORKDIR   
+RUN       wget https://zlib.net/zlib-1.2.11.tar.gz
+RUN       tar -xf zlib-1.2.11.tar.gz
+RUN       mv zlib-1.2.11 /zlib
+WORKDIR   /zlib
+
+# zlib... shared WASM Library Build
+
+RUN       emconfigure env CFLAGS="-shared" ./configure
+RUN       emmake make VERBOSE=1
 
 ########################################################
 
-# Build SWIPL       
+# SWIPL   
+
 WORKDIR   /
 RUN       git clone https://github.com/SWI-Prolog/swipl-devel.git
 WORKDIR   /swipl-devel
 RUN       git submodule update --init
 
-## Development Build...
+## SWIPL Development Build...
 
 RUN       mkdir build
 WORKDIR   /swipl-devel/build
 RUN       cmake -DSWIPL_PACKAGES_JAVA=OFF ..
 RUN       make && make install
 
-##  WASM Build...
+##  SWIPL WASM Build...
 
 WORKDIR   /swipl-devel
 RUN       mkdir build.wasm
 WORKDIR   /swipl-devel/build.wasm 
 
-WORKDIR   /emsdk
-
 ARG       CMAKE_INSTALL_PREFIX=/usr/local
 ARG       EMSDK=/emsdk_portable
-ARG       ZLIB='/zlib-1.2.11'
+ARG       EMDSK_CMAKE='/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake'
+ARG       ZLIB='/zlib'
 
-RUN       cmake -DCMAKE_TOOLCHAIN_FILE=${EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake \
+COPY      ./EmscriptenTargets.cmake /swipl-devel/cmake/
+
+RUN       cmake -DCMAKE_TOOLCHAIN_FILE=${EMSDK}/${EMDSK_CMAKE} \
           -DCMAKE_BUILD_TYPE=Release \
           -DZLIB_LIBRARY=${ZLIB}/libz.a \
           -DZLIB_INCLUDE_DIR=${ZLIB} \
