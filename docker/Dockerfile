@@ -78,9 +78,9 @@ WORKDIR   /swipl-devel/build.wasm
 ARG       CMAKE_INSTALL_PREFIX=/usr/local
 ARG       EMSDK=/emsdk_portable
 ARG       ZLIB='/zlib'
+ARG       EMDSK_CMAKE='/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake'
 
 ### WAITING FOR PULL REQUEST FOR CLAMP MODE... otherwise feel free to use the included override file.
-# ARG       EMDSK_CMAKE='/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake'
 # COPY      ./EmscriptenTargets.cmake /swipl-devel/cmake/
 
 RUN       cmake -DCMAKE_TOOLCHAIN_FILE=${EMSDK}/${EMDSK_CMAKE} \
